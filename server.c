@@ -63,6 +63,10 @@ int main(void) {
   int yes = 1;
   char s[INET6_ADDRSTRLEN];
   int rv;
+  char hostname[256];
+  int rc = gethostname(hostname, sizeof(hostname));
+  printf("hostname is %s\n", hostname);
+
 
   memset(&hints, 0, sizeof hints);
   hints.ai_family = AF_UNSPEC;

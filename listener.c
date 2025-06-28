@@ -75,24 +75,30 @@ int main(void)
   printf("listener: waiting to recvfrom...\n");
 
   addr_len = sizeof their_addr;
-  // unlike tcp the connection tuple here is of the form (localhost, localport),
-  // the directive on where to send to comes from teh sendto function where you specify the remote part.
-  // same goes with recvfrom as it gives the address of the remote connection it is receiving from.
-  if ((numbytes = recvfrom(sockfd, buf, MAXBUFLEN-1 , 0,
-                           (struct sockaddr *)&their_addr, &addr_len)) == -1) {
-    perror("recvfrom");
-    exit(1);
+
+  while (1) {
+    // unlike tcp the connection tuple here is of the form (localhost, localport),
+    // the directive on where to send to comes from teh sendto function where you specify the remote part.
+    // same goes with recvfrom as it gives the address of the remote connection it is receiving from.
+    if ((numbytes = recvfrom(sockfd, buf, MAXBUFLEN-1 , 0,
+                             (struct sockaddr *)&their_addr, &addr_len)) == -1) {
+      perror("recvfrom");
+      exit(1);
+    }
+
+    /* printf("listener: got packet from %s\n", */
+    /*        inet_ntop(their_addr.ss_family, */
+    /*                  get_in_addr((struct sockaddr *)&their_addr), */
+    /*                  s, sizeof s)); */
+    /* printf("listener: packet is %d bytes long\n", numbytes); */
+    buf[numbytes] = '\0';
+    printf("listener: packet contains \"%s\"\n", buf);
+    char *msg = "hey there";
+    /* printf("sending message %s\n", msg); */
+    int sentbytes = sendto(sockfd, msg, 9, 0, (struct sockaddr *)&their_addr, addr_len);
   }
 
-  printf("listener: got packet from %s\n",
-         inet_ntop(their_addr.ss_family,
-                   get_in_addr((struct sockaddr *)&their_addr),
-                   s, sizeof s));
-  printf("listener: packet is %d bytes long\n", numbytes);
-  buf[numbytes] = '\0';
-  printf("listener: packet contains \"%s\"\n", buf);
-
   close(sockfd);
-
+  
   return 0;
 }

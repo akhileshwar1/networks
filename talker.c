@@ -41,8 +41,8 @@ static inline uint64_t rdtsc_end() {
 struct timespec start, end;
 #define SERVERPORT "4950"    // the port users will be connecting to
 #define MAXBUFLEN 100
-#define BUCKET_SIZE_NS 1000
-#define MAX_LATENCY_NS 200000
+#define BUCKET_SIZE_NS 1
+#define MAX_LATENCY_NS 200
 #define NUM_BUCKETS (MAX_LATENCY_NS / BUCKET_SIZE_NS)
 
 int histogram[NUM_BUCKETS] = {0};
@@ -122,8 +122,9 @@ int main(int argc, char *argv[])
     uint64_t latency_cycles = end_cycles - start_cycles;
     printf("latency: %" PRIu64 " cycles\n", latency_cycles);
 
-    double cpu_ghz = 3.5; // adjust to your actual CPU frequency
+    double cpu_ghz = 4.5; // adjust to your actual CPU frequency
     double latency_ns = latency_cycles / (cpu_ghz * 1e3); // cycles to ns
+    printf("latency: %f ns\n", latency_ns);
 
     /* clock_gettime(CLOCK_MONOTONIC_RAW, &end); */
     // Calculate delta in nanoseconds
@@ -136,6 +137,7 @@ int main(int argc, char *argv[])
     count++;
 
     int bucket = latency_ns / BUCKET_SIZE_NS;
+    printf("latency bucker: %d ns\n", bucket);
     if (bucket >= NUM_BUCKETS) {
       bucket = NUM_BUCKETS - 1; // OUTLIERS TO THE LAST BUCKET.
     }
@@ -158,7 +160,7 @@ int main(int argc, char *argv[])
   printf("avg latency : %.2fns\n", avg);
 
   for (int i = 0; i < NUM_BUCKETS ; ++i) {
-    printf("%3d - %3d us : %5d packets", i, i+1, histogram[i]);
+    printf("%3d - %3d ns : %5d packets", i, i+1, histogram[i]);
   }
 
   freeaddrinfo(servinfo);

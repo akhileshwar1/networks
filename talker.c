@@ -12,7 +12,12 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
+#include <time.h>
+#include <stdint.h>
+#include <inttypes.h>
 
+
+struct timespec start, end;
 #define SERVERPORT "4950"    // the port users will be connecting to
 
 #define MAXBUFLEN 100
@@ -68,7 +73,11 @@ int main(int argc, char *argv[])
   }
   
   socklen_t addr_len = sizeof their_addr;
-  while (1) {
+  uint64_t min = UINT64_MAX;
+  uint64_t max = 0;
+  double avg, sum = 0.0;
+  int count = 0;
+  while (count < 10000) {
     // no need to connect, direct send but with additional parameters of the remote details
     // since there is no connection to look up that information from.
     if ((numbytes = sendto(sockfd, argv[2], strlen(argv[2]), 0,
@@ -76,12 +85,23 @@ int main(int argc, char *argv[])
       perror("talker: sendto");
       exit(1);
     }
+    clock_gettime(CLOCK_MONOTONIC_RAW, &start);
 
-    if ((numbytes = recvfrom(sockfd, buf,  MAXBUFLEN - 1, 0, (struct sockaddr *)&their_addr,         &addr_len)) == -1) {
+    if ((numbytes = recvfrom(sockfd, buf,  MAXBUFLEN - 1, 0, (struct sockaddr *)&their_addr,
+                             &addr_len)) == -1) {
       perror("recvfrom");
       exit(1);
     }
 
+    clock_gettime(CLOCK_MONOTONIC_RAW, &end);
+    // Calculate delta in nanoseconds
+    uint64_t latency_ns = (end.tv_sec - start.tv_sec) * 1000000000ULL +
+      (end.tv_nsec - start.tv_nsec);
+    printf("%lu ns\n", latency_ns);
+    max = (latency_ns > max) ? latency_ns : max;
+    min = (latency_ns < min) ? latency_ns : min;
+    sum = sum + latency_ns;
+    count++;
     /* printf("listener: got packet from %s\n", */
     /*        inet_ntop(their_addr.ss_family, */
     /*                  get_in_addr((struct sockaddr *)&their_addr), */
@@ -91,7 +111,12 @@ int main(int argc, char *argv[])
     buf[numbytes] = '\0';
     printf("listener: packet contains \"%s\"\n", buf);
   }
-  
+  avg = sum/(double) count;
+
+  printf("-----------------After 10,000 packets ---------------------\n");
+  printf("max latency :%" PRIu64 "ns\n", max);
+  printf("min latency :%" PRIu64 "ns\n", min);
+  printf("avg latency : %.2fns\n", avg);
 
   freeaddrinfo(servinfo);
   printf("talker: sent %d bytes to %s\n", numbytes, argv[1]);

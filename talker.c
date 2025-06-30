@@ -16,6 +16,27 @@
 #include <stdint.h>
 #include <inttypes.h>
 
+static inline uint64_t rdtsc_start() {
+  unsigned cycles_high, cycles_low;
+  asm volatile ("CPUID\n\t"
+    "RDTSC\n\t"
+    "mov %%edx, %0\n\t"
+    "mov %%eax, %1\n\t"
+    : "=r" (cycles_high), "=r" (cycles_low)
+    :: "%rax", "%rbx", "%rcx", "%rdx");
+  return ((uint64_t)cycles_high << 32) | cycles_low;
+}
+
+static inline uint64_t rdtsc_end() {
+  unsigned cycles_high, cycles_low;
+  asm volatile("RDTSCP\n\t"        // read TSC + serialize
+    "mov %%edx, %0\n\t"
+    "mov %%eax, %1\n\t"
+    "CPUID\n\t"
+    : "=r" (cycles_high), "=r" (cycles_low)
+    :: "%rax", "%rbx", "%rcx", "%rdx");
+  return ((uint64_t)cycles_high << 32) | cycles_low;
+}
 
 struct timespec start, end;
 #define SERVERPORT "4950"    // the port users will be connecting to
@@ -89,19 +110,26 @@ int main(int argc, char *argv[])
       perror("talker: sendto");
       exit(1);
     }
-    clock_gettime(CLOCK_MONOTONIC_RAW, &start);
+    /* clock_gettime(CLOCK_MONOTONIC_RAW, &start); */
 
+    uint64_t start_cycles = rdtsc_start();
     if ((numbytes = recvfrom(sockfd, buf,  MAXBUFLEN - 1, 0, (struct sockaddr *)&their_addr,
                              &addr_len)) == -1) {
       perror("recvfrom");
       exit(1);
     }
+    uint64_t end_cycles = rdtsc_end();
+    uint64_t latency_cycles = end_cycles - start_cycles;
+    printf("latency: %" PRIu64 " cycles\n", latency_cycles);
 
-    clock_gettime(CLOCK_MONOTONIC_RAW, &end);
+    double cpu_ghz = 3.5; // adjust to your actual CPU frequency
+    double latency_ns = latency_cycles / (cpu_ghz * 1e3); // cycles to ns
+
+    /* clock_gettime(CLOCK_MONOTONIC_RAW, &end); */
     // Calculate delta in nanoseconds
-    uint64_t latency_ns = (end.tv_sec - start.tv_sec) * 1000000000ULL +
-      (end.tv_nsec - start.tv_nsec);
-    printf("%lu ns\n", latency_ns);
+    /* uint64_t latency_ns = (end.tv_sec - start.tv_sec) * 1000000000ULL + */
+    /*   (end.tv_nsec - start.tv_nsec); */
+    /* printf("%lu ns\n", latency_ns); */
     max = (latency_ns > max) ? latency_ns : max;
     min = (latency_ns < min) ? latency_ns : min;
     sum = sum + latency_ns;

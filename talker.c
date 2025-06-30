@@ -19,8 +19,12 @@
 
 struct timespec start, end;
 #define SERVERPORT "4950"    // the port users will be connecting to
-
 #define MAXBUFLEN 100
+#define BUCKET_SIZE_NS 1000
+#define MAX_LATENCY_NS 200000
+#define NUM_BUCKETS (MAX_LATENCY_NS / BUCKET_SIZE_NS)
+
+int histogram[NUM_BUCKETS] = {0};
 
 // get sockaddr, IPv4 or IPv6:
 void *get_in_addr(struct sockaddr *sa)
@@ -102,6 +106,13 @@ int main(int argc, char *argv[])
     min = (latency_ns < min) ? latency_ns : min;
     sum = sum + latency_ns;
     count++;
+
+    int bucket = latency_ns / BUCKET_SIZE_NS;
+    if (bucket >= NUM_BUCKETS) {
+      bucket = NUM_BUCKETS - 1; // OUTLIERS TO THE LAST BUCKET.
+    }
+    histogram[bucket]++;
+
     /* printf("listener: got packet from %s\n", */
     /*        inet_ntop(their_addr.ss_family, */
     /*                  get_in_addr((struct sockaddr *)&their_addr), */
@@ -117,6 +128,10 @@ int main(int argc, char *argv[])
   printf("max latency :%" PRIu64 "ns\n", max);
   printf("min latency :%" PRIu64 "ns\n", min);
   printf("avg latency : %.2fns\n", avg);
+
+  for (int i = 0; i < NUM_BUCKETS ; ++i) {
+    printf("%3d - %3d us : %5d packets", i, i+1, histogram[i]);
+  }
 
   freeaddrinfo(servinfo);
   printf("talker: sent %d bytes to %s\n", numbytes, argv[1]);

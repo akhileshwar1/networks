@@ -2,6 +2,7 @@
 ** talker.c -- a datagram "client" demo
 */
 
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -15,6 +16,8 @@
 #include <time.h>
 #include <stdint.h>
 #include <inttypes.h>
+#include <sched.h>
+
 
 static inline uint64_t rdtsc_start() {
   unsigned cycles_high, cycles_low;
@@ -59,6 +62,24 @@ void *get_in_addr(struct sockaddr *sa)
 
 int main(int argc, char *argv[])
 {
+  cpu_set_t set;
+  CPU_ZERO(&set);
+  CPU_SET(0, &set);  // Pin to CPU core #0
+
+  if (sched_setaffinity(0, sizeof(set), &set) == -1) {
+    perror("sched_setaffinity");
+    exit(1);
+  }
+
+  // Priority scheduling.
+  struct sched_param param;
+  param.sched_priority = 90;  // valid range is 1–99 for FIFO/RT
+
+  if (sched_setscheduler(0, SCHED_FIFO, &param) == -1) {
+    perror("sched_setscheduler");
+    exit(1);
+  }
+
   int sockfd;
   struct addrinfo hints, *servinfo, *p;
   int rv;

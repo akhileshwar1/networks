@@ -2,6 +2,7 @@
 ** listener.c -- a datagram sockets "server" demo
 */
 
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -12,6 +13,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
+#include <sched.h>
 
 #define MYPORT "4950"    // the port users will be connecting to
 
@@ -29,6 +31,24 @@ void *get_in_addr(struct sockaddr *sa)
 
 int main(void)
 {
+  cpu_set_t set;
+  CPU_ZERO(&set);
+  CPU_SET(0, &set);  // Pin to CPU core #0
+
+  if (sched_setaffinity(0, sizeof(set), &set) == -1) {
+    perror("sched_setaffinity");
+    exit(1);
+  }
+
+  // Priority scheduling.
+  struct sched_param param;
+  param.sched_priority = 90;  // valid range is 1–99 for FIFO/RT
+
+  if (sched_setscheduler(0, SCHED_FIFO, &param) == -1) {
+    perror("sched_setscheduler");
+    exit(1);
+  }
+
   int sockfd;
   struct addrinfo hints, *servinfo, *p;
   int rv;

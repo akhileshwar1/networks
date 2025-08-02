@@ -27,12 +27,29 @@ void malloc_bench(void *arg) {
   printf("latency: %" PRIu64 " ns\n", delta);
 }
 
-void hello(void *arg) {
-  printf("hello, %s\n", (char *)arg);
+void memcpy_bench(void *arg) {
+  size_t size = 1024 * 1024;
+  void *src = malloc(size);
+  void *dst = malloc(size);
+
+  if (!src || !dst) {
+    printf("malloc failed \n");
+  }
+
+  memset(src, 1, size);
+  uint64_t start = now_ns();
+  memcpy(dst, src, size);
+  uint64_t end = now_ns();
+  uint64_t delta = end - start;  // in nanoseconds
+  printf("latency: %" PRIu64 " ns\n", delta);
 }
 
 void hey(void *arg) {
-  printf("hey, %s\n", (char *)arg);
+  uint64_t start = now_ns();
+  /* printf("hey, %s\n", (char *)arg); */
+  uint64_t end = now_ns();
+  uint64_t delta = end - start;  // in nanoseconds
+  printf("latency: %" PRIu64 " ns\n", delta);
 }
 
 typedef void (*bench_fn)(void *);
@@ -43,7 +60,7 @@ typedef struct {
 } BenchmarkEntry;
 
 BenchmarkEntry benchmarks[] = {
-  {"hello", hello},
+  {"memcpy", memcpy_bench},
   {"hey", hey},
   {"malloc", malloc_bench}
 };
